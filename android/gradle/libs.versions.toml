@@ -17,7 +17,7 @@ gson = "2.11.0"
 navigation = "2.9.8"
 lifecycle = "2.10.0"
 hilt = "2.59.2"
-kotlinx_coroutines = "1.10.2"
+kotlinx_coroutines = "1.11.0"
 accompanist = "0.37.3"
 
 [libraries]

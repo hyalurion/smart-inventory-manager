@@ -12,7 +12,7 @@ typing_extensions==4.15.0
 Werkzeug==3.1.8
 Pillow==12.2.0
 pyzbar==0.1.9
-requests==2.33.1
+requests==2.34.2
 psutil==7.2.2  # 用于系统监控，获取内存使用情况
 gunicorn==25.3.0  # 生产环境WSGI服务器(Unix/Linux)
 waitress==3.0.2  # 生产环境WSGI服务器(Windows兼容)

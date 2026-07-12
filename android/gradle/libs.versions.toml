@@ -12,7 +12,7 @@ composeBom = "2026.05.01"
 # 基础架构依赖版本
 room = "2.8.4"
 retrofit = "3.0.0"
-okhttp = "5.3.2"
+okhttp = "5.4.0"
 gson = "2.11.0"
 navigation = "2.9.8"
 lifecycle = "2.10.0"

@@ -204,7 +204,7 @@ class InventoryRepository(
 
 /** 公共 API 工厂类 */
 object ApiFactory {
-    private const val BASE_URL = "http://192.168.0.197:5000/"
+    private const val BASE_URL = "http://192.168.10.9:5000/"
 
     fun create(): InventoryApiService {
         val logging = okhttp3.logging.HttpLoggingInterceptor().apply {

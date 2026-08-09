@@ -87,7 +87,7 @@ class InventoryViewModel(
     }
     
     /** 获取服务器地址 */
-    private fun getBaseUrl(): String = "http://192.168.0.197:5000"
+    private fun getBaseUrl(): String = "http://192.168.10.9:5000"
 
     /** 加载统计数据 */
     fun loadStatistics() {

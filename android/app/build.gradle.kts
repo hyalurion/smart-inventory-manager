@@ -3,18 +3,16 @@ import java.util.*
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    // alias(libs.plugins.kotlin.kapt) // 暂时禁用Kapt
-    // alias(libs.plugins.hilt.android) // 暂时禁用Hilt
 }
 
 android {
     namespace = "com.chronie.inventorymanager"
-    compileSdk { version = release(36) }
+    compileSdk { version = release(37) }
 
     defaultConfig {
         applicationId = "com.chronie.inventorymanager"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         // 使用更兼容的日期格式化方式
         fun getBuildDate(): String {
             val calendar = Calendar.getInstance()
@@ -59,6 +57,7 @@ android {
 
     buildFeatures { compose = true }
 
+    //noinspection WrongGradleMethod
     kotlin {
         jvmToolchain(21)
         compilerOptions {
@@ -102,8 +101,8 @@ dependencies {
     // 网络依赖
     implementation("com.squareup.retrofit2:retrofit:3.0.0")
     implementation("com.squareup.retrofit2:converter-gson:3.0.0")
-    implementation("com.squareup.okhttp3:okhttp:5.3.2")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.3.2")
+    implementation("com.squareup.okhttp3:okhttp:5.4.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
 
     // 依赖注入 (暂时禁用Hilt)
     // implementation(libs.hilt.android)
@@ -132,6 +131,6 @@ dependencies {
     implementation(libs.androidx.datastore)
 
     // AndroidLiquidGlass毛玻璃效果库
-    implementation("io.github.kyant0:backdrop:1.0.6")
+    implementation("io.github.kyant0:backdrop:2.0.0")
     implementation("io.github.kyant0:capsule:2.1.3")
 }

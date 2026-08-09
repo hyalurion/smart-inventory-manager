@@ -46,6 +46,7 @@ import com.chronie.inventorymanager.R
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import com.chronie.inventorymanager.liquidglass.backdrop.backdrops.rememberCanvasBackdrop
 import com.chronie.inventorymanager.liquidglass.backdrop.drawBackdrop
+import com.chronie.inventorymanager.liquidglass.components.GlassDropdownMenu
 import com.chronie.inventorymanager.ui.theme.GlassTypography
 import com.chronie.inventorymanager.ui.theme.getGlassColors
 import java.text.SimpleDateFormat
@@ -275,7 +276,7 @@ fun AddItemScreen(
                             category = selected?.second ?: ""
                         },
                         placeholder = stringResource(R.string.add_selectcategory),
-                        colors = colors
+                        colors = glassColorScheme
                     )
                     
                     // 数量和单位
@@ -336,14 +337,27 @@ fun AddItemScreen(
                         colors = colors
                     )
                     
-                    // 过期日期
-                    Box(modifier = Modifier.clickable { showDatePicker = true }) {
+                    // 过期日期（点击任意位置打开选择器，不可直接输入）
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showDatePicker = true }
+                    ) {
                         GlassTextField(
                             value = expiryDate,
-                            onValueChange = { expiryDate = it },
+                            onValueChange = { },
                             placeholder = stringResource(R.string.add_expirydate),
                             label = stringResource(R.string.add_expirydate),
-                            colors = colors
+                            enabled = false,
+                            colors = colors,
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.CalendarToday,
+                                    contentDescription = null,
+                                    tint = colors.text.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         )
                     }
                     
@@ -407,7 +421,9 @@ fun GlassTextField(
     keyboardType: KeyboardType = KeyboardType.Text,
     maxLines: Int = 1,
     focusRequester: FocusRequester? = null,
-    colors: GlassColors
+    colors: GlassColors,
+    enabled: Boolean = true,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     Column {
         Text(
@@ -438,6 +454,7 @@ fun GlassTextField(
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
+                enabled = enabled,
                 textStyle = GlassTypography.bodyMedium.copy(color = colors.text),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -446,165 +463,27 @@ fun GlassTextField(
                 keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
                 maxLines = maxLines,
                 decorationBox = { innerTextField ->
-                    Box {
-                        if (value.isEmpty()) {
-                            Text(
-                                text = placeholder,
-                                style = GlassTypography.bodyMedium.copy(
-                                    color = colors.text.copy(alpha = 0.5f)
-                                )
-                            )
-                        }
-                        innerTextField()
-                    }
-                }
-            )
-        }
-    }
-}
-
-// 玻璃态下拉菜单
-@Composable
-fun GlassDropdownMenu(
-    selectedItem: String,
-    items: List<String>,
-    onItemSelected: (String) -> Unit,
-    placeholder: String,
-    colors: GlassColors,
-    compact: Boolean = false
-) {
-    var expanded by remember { mutableStateOf(false) }
-    // 用于记录触发器（锚点）的宽度，以让下拉菜单宽度与触发器一致且受最大宽度限制
-    val anchorWidthPx = remember { mutableStateOf(0) }
-    val density = LocalDensity.current
-
-    Column {
-        if (!compact) {
-            Text(
-                text = placeholder,
-                style = GlassTypography.bodySmall.copy(
-                    color = colors.text.copy(alpha = 0.7f),
-                    fontWeight = FontWeight.Medium
-                ),
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-        }
-        
-        val dropdownBackdrop = rememberCanvasBackdrop {
-            drawRoundRect(
-                color = colors.textField,
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f)
-            )
-        }
-        
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // 下拉按钮
-            Box(
-                modifier = Modifier
-                    .drawBackdrop(
-                        backdrop = dropdownBackdrop,
-                        shape = { RoundedCornerShape(12.dp) },
-                        effects = {}
-                    )
-                    .alpha(colors.alpha)
-                    .clickable { expanded = !expanded }
-                    .onGloballyPositioned { coords ->
-                        // 记录触发器宽度（像素）
-                        anchorWidthPx.value = coords.size.width
-                    }
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (selectedItem.isEmpty()) placeholder else selectedItem,
-                        style = GlassTypography.bodyMedium.copy(
-                            color = if (selectedItem.isEmpty()) 
-                                colors.text.copy(alpha = 0.5f) 
-                                else colors.text
-                        )
-                    )
-                    Icon(
-                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = null,
-                        tint = colors.text.copy(alpha = 0.7f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            
-            // 下拉菜单：宽度与触发器一致（或受最大宽度限制），并为内容加入展开/收起动画
-            val menuModifier = if (anchorWidthPx.value > 0) {
-                // 将像素转换为 dp，并限制最大宽度为 320.dp
-                val anchorDp = with(density) { anchorWidthPx.value.toDp() }
-                Modifier.widthIn(max = 320.dp).width(anchorDp)
-            } else {
-                Modifier.widthIn(max = 320.dp)
-            }
-
-            DropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false },
-                modifier = menuModifier.background(Color.Transparent)
-            ) {
-                // 在弹出内容里添加动画可视化效果
-                AnimatedVisibility(
-                    visible = expanded,
-                    enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(animationSpec = tween(120)),
-                    exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(animationSpec = tween(100))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                colors.container.copy(alpha = 0.95f),
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .border(
-                                width = 1.dp,
-                                color = colors.border,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .padding(vertical = 4.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        items.forEachIndexed { index, item ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = item,
-                                        style = GlassTypography.bodyMedium.copy(
-                                            color = if (selectedItem == item)
-                                                colors.primary
-                                            else colors.text
-                                        )
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (value.isEmpty()) {
+                                Text(
+                                    text = placeholder,
+                                    style = GlassTypography.bodyMedium.copy(
+                                        color = colors.text.copy(alpha = 0.5f)
                                     )
-                                },
-                                onClick = {
-                                    onItemSelected(item)
-                                    expanded = false
-                                },
-                                modifier = Modifier
-                                    .background(
-                                        if (selectedItem == item)
-                                            colors.selectedContainer.copy(alpha = 0.3f)
-                                        else Color.Transparent
-                                    )
-                            )
-
-                            if (index < items.lastIndex) {
-                                HorizontalDivider(
-                                    color = colors.border,
-                                    thickness = 0.5.dp,
-                                    modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                             }
+                            innerTextField()
+                        }
+                        if (trailingIcon != null) {
+                            trailingIcon()
                         }
                     }
                 }
-            }
+            )
         }
     }
 }

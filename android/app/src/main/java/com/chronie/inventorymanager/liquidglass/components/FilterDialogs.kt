@@ -164,12 +164,7 @@ fun ItemActionDialog(
     val isLightTheme = !isSystemInDarkTheme()
     val colors = getGlassColors(isLightTheme)
     
-    BasicAlertDialog(
-        onDismissRequest = onDismiss,
-        modifier = modifier
-            .background(colors.container.copy(alpha = 0.9f), RoundedCornerShape(16.dp))
-    ) {
-        GlassConfirmDialog(
+    GlassConfirmDialog(
             title = item.name,
             content = {
                 Column(
@@ -249,7 +244,6 @@ fun ItemActionDialog(
             onDismissClick = onDismiss,
             useIconButtons = true
         )
-    }
 }
 
 /**
@@ -725,17 +719,7 @@ fun UnifiedFilterDialog(
     val sortOptions = remember { SortOption.values().map { sortOption -> sortOptionDisplayMap[sortOption]!! } }
     val sortOptionByDisplay = remember { sortOptionDisplayMap.entries.associate { (key, value) -> value to key } }
 
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideInVertically(
-            animationSpec = tween(300, easing = FastOutSlowInEasing),
-            initialOffsetY = { it / 3 }
-        ),
-        exit = fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)) + slideOutVertically(
-            animationSpec = tween(200, easing = FastOutSlowInEasing),
-            targetOffsetY = { it / 3 }
-        )
-    ) {
+    if (isVisible) {
         GlassConfirmDialog(
             title = stringResource(id = R.string.inventory_filter),
             content = {

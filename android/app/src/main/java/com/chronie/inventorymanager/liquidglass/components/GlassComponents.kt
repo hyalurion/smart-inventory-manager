@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -27,10 +29,14 @@ import androidx.compose.ui.draw.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.chronie.inventorymanager.R
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import com.chronie.inventorymanager.domain.model.StatusFilter
@@ -42,6 +48,7 @@ import com.chronie.inventorymanager.liquidglass.backdrop.backdrops.rememberCanva
 import com.chronie.inventorymanager.liquidglass.backdrop.drawBackdrop
 import com.chronie.inventorymanager.ui.theme.GlassTypography
 import com.chronie.inventorymanager.ui.theme.getGlassColors
+import com.chronie.inventorymanager.ui.theme.GlassColorScheme
 import com.chronie.inventorymanager.utils.CategoryNameConverter
 import java.text.SimpleDateFormat
 import java.util.*
@@ -187,7 +194,7 @@ fun GlassFilterChip(
         }
 }
 
-/** 液态玻璃下拉菜单 */
+/** 液态玻璃下拉菜单（添加/编辑页与筛选页共用，保证样式一致；选项以 Material3 DropdownMenu 浮层呈现） */
 @Composable
 fun GlassDropdownMenu(
         selectedItem: String,
@@ -196,155 +203,164 @@ fun GlassDropdownMenu(
         placeholder: String,
         modifier: Modifier = Modifier,
         multiSelect: Boolean = false,
-        selectedItems: List<String> = emptyList()
+        selectedItems: List<String> = emptyList(),
+        colors: GlassColorScheme? = null,
+        compact: Boolean = false
 ) {
+        val glassColors = colors ?: getGlassColors(!isSystemInDarkTheme())
         var expanded by remember { mutableStateOf(false) }
-        val isLightTheme = !isSystemInDarkTheme()
-        val colors = getGlassColors(isLightTheme)
+        // 记录触发器（锚点）宽度，使浮层宽度与触发器一致并受最大宽度限制
+        val anchorWidthPx = remember { mutableStateOf(0) }
+        val density = LocalDensity.current
 
         Column(modifier = modifier) {
-                // 下拉按钮 - 固定高度，不受展开状态影响
-                Surface(
-                        onClick = { expanded = !expanded },
-                        modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp) // 固定高度，避免扩展
-                                .background(
-                                        color = colors.container.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(12.dp)
-                                )
-                                .border(
-                                        width = 1.dp,
-                                        color = if (expanded) colors.primary else colors.border,
-                                        shape = RoundedCornerShape(12.dp)
+                if (!compact) {
+                        Text(
+                                text = placeholder,
+                                style = GlassTypography.bodySmall.copy(
+                                        color = glassColors.text.copy(alpha = 0.7f),
+                                        fontWeight = FontWeight.Medium
                                 ),
-                        tonalElevation = 0.dp
-                ) {
-                        Row(
-                                modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                        ) {
-                                Text(
-                                        text = if (multiSelect && selectedItems.isNotEmpty()) {
-                                                stringResource(R.string.add_save) + " (${selectedItems.size})"
-                                        } else if (selectedItem.isEmpty()) {
-                                                placeholder
-                                        } else {
-                                                selectedItem
-                                        },
-                                        style = GlassTypography.bodyMedium.copy(
-                                                color = if (multiSelect && selectedItems.isNotEmpty() || selectedItem.isNotEmpty()) 
-                                                        colors.text else colors.text.copy(alpha = 0.6f)
-                                        ),
-                                        modifier = Modifier.weight(1f)
-                                )
-                                Icon(
-                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                                        contentDescription = null,
-                                        tint = colors.text.copy(alpha = 0.7f),
-                                        modifier = Modifier.size(20.dp)
-                                )
-                        }
+                                modifier = Modifier.padding(bottom = 4.dp)
+                        )
                 }
 
-                // 下拉菜单 - 添加动画效果
-                AnimatedVisibility(
-                        visible = expanded,
-                        enter = fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing)) + 
-                              slideInVertically(
-                                  animationSpec = tween(200, easing = FastOutSlowInEasing),
-                                  initialOffsetY = { -10 }
-                              ),
-                        exit = fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)) + 
-                              slideOutVertically(
-                                  animationSpec = tween(200, easing = FastOutSlowInEasing),
-                                  targetOffsetY = { -10 }
-                              )
-                ) {
-                        Surface(
-                                modifier = Modifier
-                                        .fillMaxWidth()
-                                        .background(
-                                                color = colors.container.copy(alpha = 0.98f),
-                                                shape = RoundedCornerShape(12.dp)
-                                        )
-                                        .border(
-                                                width = 1.dp,
-                                                color = colors.border,
-                                                shape = RoundedCornerShape(12.dp)
-                                        ),
-                                tonalElevation = 0.dp
-                        ) {
-                                LazyColumn(
-                                        modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 4.dp),
-                                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                        items(items) { item ->
-                                                val isSelected = if (multiSelect) {
-                                                        selectedItems.contains(item)
-                                                } else {
-                                                        selectedItem == item
-                                                }
+                val dropdownBackdrop = rememberCanvasBackdrop {
+                        drawRoundRect(
+                                color = glassColors.container,
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(12f, 12f)
+                        )
+                }
 
-                                                // 移除Surface背景，使用纯文本+边框
-                                                Box(
-                                                        modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .background(
-                                                                        color = if (isSelected) 
-                                                                                colors.selectedContainer.copy(alpha = 0.3f) 
-                                                                                else Color.Transparent,
-                                                                        shape = RoundedCornerShape(8.dp)
-                                                                )
-                                                                .border(
-                                                                        width = if (isSelected) 0.5.dp else 0.dp,
-                                                                        color = if (isSelected) colors.primary.copy(alpha = 0.3f) else Color.Transparent,
-                                                                        shape = RoundedCornerShape(8.dp)
-                                                                )
-                                                                .clickable {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                        // 下拉触发框（玻璃态）
+                        Box(
+                                modifier = Modifier
+                                        .drawBackdrop(
+                                                backdrop = dropdownBackdrop,
+                                                shape = { RoundedCornerShape(12.dp) },
+                                                effects = {}
+                                        )
+                                        .alpha(glassColors.alpha)
+                                        .clickable { expanded = !expanded }
+                                        .onGloballyPositioned { coords ->
+                                                anchorWidthPx.value = coords.size.width
+                                        }
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                                Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                        Text(
+                                                text = if (multiSelect && selectedItems.isNotEmpty()) {
+                                                        stringResource(R.string.add_save) + " (${selectedItems.size})"
+                                                } else if (selectedItem.isEmpty()) {
+                                                        placeholder
+                                                } else {
+                                                        selectedItem
+                                                },
+                                                style = GlassTypography.bodyMedium.copy(
+                                                        color = if ((multiSelect && selectedItems.isNotEmpty()) || selectedItem.isNotEmpty())
+                                                                glassColors.text
+                                                        else glassColors.text.copy(alpha = 0.5f)
+                                                )
+                                        )
+                                        Icon(
+                                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                                contentDescription = null,
+                                                tint = glassColors.text.copy(alpha = 0.7f),
+                                                modifier = Modifier.size(20.dp)
+                                        )
+                                }
+                        }
+
+                        // 浮层菜单：宽度与触发器一致（或受最大 320.dp 限制），带展开/收起动画
+                        val menuModifier = if (anchorWidthPx.value > 0) {
+                                val anchorDp = with(density) { anchorWidthPx.value.toDp() }
+                                Modifier.widthIn(max = 320.dp).width(anchorDp)
+                        } else {
+                                Modifier.widthIn(max = 320.dp)
+                        }
+
+                        DropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false },
+                                modifier = menuModifier.background(Color.Transparent)
+                        ) {
+                                AnimatedVisibility(
+                                        visible = expanded,
+                                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(animationSpec = tween(120)),
+                                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(animationSpec = tween(100))
+                                ) {
+                                        Column(
+                                                modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .background(
+                                                                glassColors.container.copy(alpha = 0.95f),
+                                                                shape = RoundedCornerShape(12.dp)
+                                                        )
+                                                        .border(
+                                                                width = 1.dp,
+                                                                color = glassColors.border,
+                                                                shape = RoundedCornerShape(12.dp)
+                                                        )
+                                                        .padding(vertical = 4.dp)
+                                        ) {
+                                                items.forEachIndexed { index, item ->
+                                                        val isSelected = if (multiSelect) {
+                                                                selectedItems.contains(item)
+                                                        } else {
+                                                                selectedItem == item
+                                                        }
+                                                        DropdownMenuItem(
+                                                                text = {
+                                                                        Text(
+                                                                                text = item,
+                                                                                style = GlassTypography.bodyMedium.copy(
+                                                                                        color = if (isSelected)
+                                                                                                glassColors.primary
+                                                                                        else glassColors.text
+                                                                                )
+                                                                        )
+                                                                },
+                                                                trailingIcon = if (isSelected) {
+                                                                        {
+                                                                                Icon(
+                                                                                        imageVector = Icons.Default.Check,
+                                                                                        contentDescription = null,
+                                                                                        tint = glassColors.primary,
+                                                                                        modifier = Modifier.size(16.dp)
+                                                                                )
+                                                                        }
+                                                                } else null,
+                                                                onClick = {
                                                                         if (multiSelect) {
-                                                                                val newSelectedItems = if (isSelected) {
+                                                                                val newSelected = if (isSelected) {
                                                                                         selectedItems - item
                                                                                 } else {
                                                                                         selectedItems + item
                                                                                 }
-                                                                                onItemSelected(newSelectedItems.joinToString(","))
+                                                                                onItemSelected(newSelected.joinToString(","))
                                                                         } else {
                                                                                 onItemSelected(item)
-                                                                        }
-                                                                        if (!multiSelect) {
                                                                                 expanded = false
                                                                         }
-                                                                }
-                                                                .padding(horizontal = 16.dp, vertical = 10.dp),
-                                                        contentAlignment = Alignment.CenterStart
-                                                ) {
-                                                        Row(
-                                                                modifier = Modifier.fillMaxWidth(),
-                                                                horizontalArrangement = Arrangement.SpaceBetween,
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                        ) {
-                                                                Text(
-                                                                        text = item,
-                                                                        style = GlassTypography.bodyMedium.copy(
-                                                                                color = if (isSelected) 
-                                                                                        colors.primary 
-                                                                                        else colors.text.copy(alpha = 0.9f)
-                                                                        )
+                                                                },
+                                                                modifier = Modifier.background(
+                                                                        if (isSelected)
+                                                                                glassColors.selectedContainer.copy(alpha = 0.3f)
+                                                                        else Color.Transparent
                                                                 )
-                                                                if (isSelected) {
-                                                                        Icon(
-                                                                                imageVector = Icons.Default.Check,
-                                                                                contentDescription = null,
-                                                                                tint = colors.primary,
-                                                                                modifier = Modifier.size(16.dp)
-                                                                        )
-                                                                }
+                                                        )
+
+                                                        if (index < items.lastIndex) {
+                                                                HorizontalDivider(
+                                                                        color = glassColors.border,
+                                                                        thickness = 0.5.dp,
+                                                                        modifier = Modifier.padding(horizontal = 16.dp)
+                                                                )
                                                         }
                                                 }
                                         }
@@ -845,23 +861,16 @@ fun GlassConfirmDialog(
                 )
         }
 
-        Box(
-                modifier =
-                        Modifier.fillMaxSize()
-                                .background(
-                                        color = Color.Black.copy(alpha = 0.5f),
-                                        shape = RoundedCornerShape(16.dp)
-                                )
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null
-                                ) { onDismissClickFinal() }
-                                .padding(32.dp),
-                contentAlignment = Alignment.Center
+        Dialog(
+                onDismissRequest = onDismissClickFinal,
+                properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
                 Box(
                         modifier =
                                 Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp)
+                                        .heightIn(max = 600.dp)
                                         .drawBackdrop(
                                                 backdrop = backdrop,
                                                 shape = { RoundedCornerShape(20.dp) },
@@ -877,7 +886,9 @@ fun GlassConfirmDialog(
                 ) {
                         Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                        .fillMaxWidth()
+                                        .verticalScroll(rememberScrollState())
                         ) {
                                 Text(
                                         text = titleRes?.let { stringResource(it) } ?: title ?: stringResource(R.string.error_title),

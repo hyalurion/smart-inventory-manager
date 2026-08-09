@@ -27,22 +27,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
-import androidx.navigation.NavController
+import androidx.hilt.navigation.compose.hiltViewModel
 import android.graphics.Bitmap
 import android.widget.Toast
 import com.chronie.inventorymanager.R
-import com.chronie.inventorymanager.data.network.InventoryApiService
-import com.chronie.inventorymanager.data.repository.ApiFactory
 import com.chronie.inventorymanager.liquidglass.utils.GlassContainer
 import com.chronie.inventorymanager.liquidglass.components.GlassConfirmDialog
 import com.chronie.inventorymanager.liquidglass.utils.GlassButton
 import com.chronie.inventorymanager.liquidglass.utils.GlassOutlinedButton
 import com.chronie.inventorymanager.presentation.viewmodel.PurchaseListViewModel
-import com.chronie.inventorymanager.presentation.viewmodel.PurchaseListViewModelFactory
 import com.chronie.inventorymanager.presentation.viewmodel.PurchaseListUiState
 import com.chronie.inventorymanager.ui.theme.getGlassColors
 import com.chronie.inventorymanager.utils.CategoryNameConverter
@@ -99,17 +93,8 @@ fun formatDate(dateString: String?): String {
 
 @Composable
 fun PurchaseListScreen(
-    navController: NavController? = null,
-    inventoryApiService: InventoryApiService? = null
 ) {
-    // 创建 ViewModel Factory，提供所需的 InventoryApiService 依赖
-    val viewModelFactory = remember {
-        PurchaseListViewModelFactory(
-            inventoryApiService ?: ApiFactory.create()
-        )
-    }
-    
-    val viewModel: PurchaseListViewModel = viewModel(factory = viewModelFactory)
+    val viewModel: PurchaseListViewModel = hiltViewModel()
     val context = LocalContext.current
     val isLightTheme = !isSystemInDarkTheme()
     val glassColors = getGlassColors(isLightTheme)

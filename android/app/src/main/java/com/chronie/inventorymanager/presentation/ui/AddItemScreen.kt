@@ -13,7 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.material3.*
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarToday
@@ -69,7 +69,7 @@ fun AddItemScreen(
     onBackPress: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val viewModel: InventoryViewModel = viewModel()
+    val viewModel: InventoryViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsState()
     val isLightTheme = !isSystemInDarkTheme()
     val glassColorScheme = getGlassColors(isLightTheme)

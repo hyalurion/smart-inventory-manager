@@ -1,8 +1,8 @@
 package com.chronie.inventorymanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
 import com.chronie.inventorymanager.data.network.InventoryApiService
 import com.smartinventory.models.PurchaseListItem
 import com.smartinventory.models.PurchaseListResponse
@@ -11,12 +11,14 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import retrofit2.Response
+import javax.inject.Inject
 
 /**
  * Purchase List ViewModel
  * Handles business logic for purchase list functionality
  */
-class PurchaseListViewModel(
+@HiltViewModel
+class PurchaseListViewModel @Inject constructor(
     private val inventoryApiService: InventoryApiService
 ) : ViewModel() {
 
@@ -139,19 +141,4 @@ sealed class PurchaseListUiState {
     data class Success(val items: List<PurchaseListItem>) : PurchaseListUiState()
     data object Empty : PurchaseListUiState()
     data class Error(val message: String) : PurchaseListUiState()
-}
-
-/**
- * Factory for PurchaseListViewModel
- */
-class PurchaseListViewModelFactory(
-    private val inventoryApiService: InventoryApiService
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(PurchaseListViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return PurchaseListViewModel(inventoryApiService) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
 }

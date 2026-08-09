@@ -2,6 +2,8 @@ package com.chronie.inventorymanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import com.chronie.inventorymanager.domain.model.StatusFilter
 import com.chronie.inventorymanager.domain.model.SortOption
@@ -14,6 +16,7 @@ import com.chronie.inventorymanager.domain.usecase.GetStatisticsUseCase
 import com.chronie.inventorymanager.domain.usecase.UpdateInventoryItemUseCase
 import com.chronie.inventorymanager.domain.usecase.AddInventoryItemUseCase
 import com.chronie.inventorymanager.domain.usecase.UseInventoryItemUseCase
+import com.chronie.inventorymanager.data.network.ApiException
 import java.util.Date
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,15 +24,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /** 库存页面ViewModel 管理库存页面的UI状态和业务逻辑 */
-class InventoryViewModel(
-        private val getInventoryItemsUseCase: GetInventoryItemsUseCase = GetInventoryItemsUseCase(),
-    private val addInventoryItemUseCase: AddInventoryItemUseCase = AddInventoryItemUseCase(),
-        private val getStatisticsUseCase: GetStatisticsUseCase = GetStatisticsUseCase(),
-        private val updateInventoryItemUseCase: UpdateInventoryItemUseCase =
-                UpdateInventoryItemUseCase(),
-        private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase =
-                DeleteInventoryItemUseCase(),
-        private val useInventoryItemUseCase: UseInventoryItemUseCase = UseInventoryItemUseCase()
+@HiltViewModel
+class InventoryViewModel @Inject constructor(
+    private val getInventoryItemsUseCase: GetInventoryItemsUseCase,
+    private val addInventoryItemUseCase: AddInventoryItemUseCase,
+    private val getStatisticsUseCase: GetStatisticsUseCase,
+    private val updateInventoryItemUseCase: UpdateInventoryItemUseCase,
+    private val deleteInventoryItemUseCase: DeleteInventoryItemUseCase,
+    private val useInventoryItemUseCase: UseInventoryItemUseCase
 ) : ViewModel() {
 
     // UI状态
@@ -51,28 +53,20 @@ class InventoryViewModel(
 
             try {
                 val items = getInventoryItemsUseCase.execute()
-                
-                // 如果返回空列表，可能是网络问题
-                if (items.isEmpty()) {
-                    val errorMessage = "无法连接到服务器 (${getBaseUrl()})，请检查网络连接和服务器状态"
-                    _uiState.value = _uiState.value.copy(
-                        items = emptyList(),
-                        availableCategories = emptyList(),
-                        isLoading = false,
-                        error = errorMessage
-                    )
-                } else {
-                    val categories = items.mapNotNull { it.category }.distinct().sorted()
-                    _uiState.value = _uiState.value.copy(
-                        items = items,
-                        availableCategories = categories,
-                        isLoading = false
-                    )
-                    // 重新应用筛选器
-                    applyFilters()
-                }
+
+                // 空列表是正常状态（服务器正常但暂无数据），不应误判为连接失败。
+                // 真正的连接异常会在下方 catch 中按类型（UnknownHost/Connect/Timeout/ApiException）给出具体提示。
+                val categories = items.mapNotNull { it.category }.distinct().sorted()
+                _uiState.value = _uiState.value.copy(
+                    items = items,
+                    availableCategories = categories,
+                    isLoading = false
+                )
+                // 重新应用筛选器
+                applyFilters()
             } catch (e: Exception) {
                 val errorMessage = when (e) {
+                    is ApiException -> e.message ?: "操作失败"
                     is java.net.UnknownHostException -> "网络连接失败: 无法访问服务器 ${getBaseUrl()}"
                     is java.net.SocketTimeoutException -> "网络请求超时: 请检查网络连接"
                     is java.net.ConnectException -> "服务器连接失败: 请确认服务器 ${getBaseUrl()} 正在运行"
@@ -100,7 +94,7 @@ class InventoryViewModel(
                         _uiState.value.copy(statistics = statistics, isLoadingStats = false)
             } catch (e: Exception) {
                 _uiState.value =
-                        _uiState.value.copy(isLoadingStats = false, error = "加载统计失败: ${e.message}")
+                        _uiState.value.copy(isLoadingStats = false, error = (e as? ApiException)?.message ?: "加载统计失败: ${e.message}")
             }
         }
     }
@@ -183,7 +177,7 @@ class InventoryViewModel(
             } catch (e: Exception) {
                 println("InventoryViewModel: 使用物品失败 - ${e.message}")
                 e.printStackTrace()
-                _uiState.value = _uiState.value.copy(error = "使用物品失败: ${e.message}")
+                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "使用物品失败: ${e.message}")
             }
         }
     }
@@ -204,7 +198,7 @@ class InventoryViewModel(
                 // 重新加载统计数据
                 loadStatistics()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "删除物品失败: ${e.message}")
+                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "删除物品失败: ${e.message}")
             }
         }
     }
@@ -226,7 +220,7 @@ class InventoryViewModel(
 
                 onResult(true, null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "添加物品失败: ${e.message}")
+                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "添加物品失败: ${e.message}")
                 onResult(false, e.message)
             } finally {
                 _isLoading.value = false
@@ -251,7 +245,7 @@ class InventoryViewModel(
 
                 onResult(true, null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "更新物品失败: ${e.message}")
+                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "更新物品失败: ${e.message}")
                 onResult(false, e.message)
             } finally {
                 _isLoading.value = false

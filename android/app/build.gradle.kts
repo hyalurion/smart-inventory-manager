@@ -3,6 +3,9 @@ import java.util.*
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
 }
 
 android {
@@ -20,14 +23,14 @@ android {
             val month = calendar.get(Calendar.MONTH) + 1
             val day = calendar.get(Calendar.DAY_OF_MONTH)
             return String.format("%04d%02d%02d", year, month, day)
-        }   
+        }
 
         fun getBuildTime(): String {
             val calendar = Calendar.getInstance()
             val hour = calendar.get(Calendar.HOUR_OF_DAY)
             val minute = calendar.get(Calendar.MINUTE)
             return String.format("%02d%02d", hour, minute)
-        }   
+        }
 
         val buildDate = getBuildDate()
         val defaultBuildNumber = getBuildTime()
@@ -57,57 +60,57 @@ android {
 
     buildFeatures { compose = true }
 
-    //noinspection WrongGradleMethod
     kotlin {
         jvmToolchain(21)
         compilerOptions {
             freeCompilerArgs.addAll(
-                "-Xcontext-parameters",
                 "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
             )
         }
     }
 
-    composeOptions { kotlinCompilerExtensionVersion = "1.5.17" }
-
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
 
 dependencies {
+    // 核心
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 
-    // Compose BOM
+    // Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive.navigation.suite)
-    implementation("androidx.compose.material:material-icons-extended")
+    implementation(libs.androidx.compose.material.icons.extended)
 
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
-    implementation(libs.androidx.navigation.testing)
+    // Navigation 3
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
+    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+    implementation(libs.androidx.material3.adaptive.navigation3)
+    implementation(libs.kotlinx.serialization.core)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
-    // Room数据库 (暂时禁用Kapt)
+    // Room 数据库
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    // kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
-    // 网络依赖
-    implementation("com.squareup.retrofit2:retrofit:3.0.0")
-    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
-    implementation("com.squareup.okhttp3:okhttp:5.4.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:5.4.0")
+    // 网络
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
 
-    // 依赖注入 (暂时禁用Hilt)
-    // implementation(libs.hilt.android)
-    // kapt(libs.hilt.compiler)
-    // implementation(libs.hilt.navigation.compose)
+    // 依赖注入（Hilt）
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
 
     // 协程
     implementation(libs.kotlinx.coroutines.android)
@@ -117,20 +120,21 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
-    // Coil图片加载
-    implementation("io.coil-kt:coil-compose:2.7.0")
+    // 图片加载（Coil 3）
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
 
-    // 测试依赖
+    // 测试
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
 
-    // 可选：临时数据存储
+    // 临时数据存储
     implementation(libs.androidx.datastore)
 
-    // AndroidLiquidGlass毛玻璃效果库
-    implementation("io.github.kyant0:backdrop:2.0.0")
-    implementation("io.github.kyant0:capsule:2.1.3")
+    // AndroidLiquidGlass 毛玻璃效果库
+    implementation(libs.kyant.backdrop)
+    implementation(libs.kyant.capsule)
 }

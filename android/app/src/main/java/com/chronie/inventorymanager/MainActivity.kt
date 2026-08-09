@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,7 +23,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -40,51 +38,53 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
-import com.chronie.inventorymanager.ui.theme.SmartInventoryManagerTheme
+import androidx.compose.ui.unit.dp
+import dagger.hilt.android.AndroidEntryPoint
+import androidx.navigation3.runtime.NavEntry
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.ui.NavDisplay
+import com.chronie.inventorymanager.data.*
 import com.chronie.inventorymanager.liquidglass.LiquidBottomTabs
 import com.chronie.inventorymanager.liquidglass.TabItemData
-import androidx.compose.ui.unit.dp
-import com.chronie.inventorymanager.SettingsScreen
-import com.chronie.inventorymanager.data.*
-import com.chronie.inventorymanager.presentation.ui.InventoryScreen
 import com.chronie.inventorymanager.presentation.ui.AddItemScreen
+import com.chronie.inventorymanager.presentation.ui.InventoryScreen
 import com.chronie.inventorymanager.presentation.ui.PurchaseListScreen
+import com.chronie.inventorymanager.ui.theme.SmartInventoryManagerTheme
+import kotlinx.serialization.Serializable
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         android.util.Log.d("MainActivity", "Starting language initialization")
-        
+
         // 应用启动时，在UI初始化前先尝试应用保存的语言偏好
         try {
             android.util.Log.d("MainActivity", "Attempting to get language preferences")
             val sharedPrefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
             val savedLanguageCode = sharedPrefs.getString("preferred_language", null)
-            
+
             android.util.Log.d("MainActivity", "Saved language code from SharedPreferences: $savedLanguageCode")
-            
+
             if (savedLanguageCode != null) {
                 android.util.Log.d("MainActivity", "Attempting to apply saved language: $savedLanguageCode")
-                
+
                 // 使用LanguageManager获取正确的LanguageConfig对象
                 val languageConfig = LanguageManager.getLanguageByCode(savedLanguageCode)
-                
+
                 if (languageConfig != null) {
                     android.util.Log.d("MainActivity", "Found language config: ${languageConfig.code}")
-                    
+
                     // 获取当前配置
                     val resources = resources
                     val configuration = resources.configuration
-                    
+
                     // 使用正确的Locale对象
                     val locale = languageConfig.locale
                     android.util.Log.d("MainActivity", "Setting locale to: $locale")
-                    
+
                     // 应用Locale设置
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
                         // Android 4.2及以上
@@ -94,11 +94,11 @@ class MainActivity : ComponentActivity() {
                         @Suppress("DEPRECATION")
                         configuration.locale = locale
                     }
-                    
+
                     // 更新配置
                     @Suppress("DEPRECATION")
                     resources.updateConfiguration(configuration, resources.displayMetrics)
-                    
+
                     // 对于Android N及以上，还需要更新Context
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                         android.util.Log.d("MainActivity", "Using N+ API for language change")
@@ -109,9 +109,9 @@ class MainActivity : ComponentActivity() {
                 } else {
                     android.util.Log.w("MainActivity", "Language not found for code: $savedLanguageCode")
                 }
-                
+
                 android.util.Log.d("MainActivity", "Language set successfully in onCreate")
-                
+
                 // 验证语言设置是否生效
                 val currentLocale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     resources.configuration.locales.get(0)
@@ -127,7 +127,7 @@ class MainActivity : ComponentActivity() {
             android.util.Log.e("MainActivity", "Failed to set language from preferences: ${e.message}", e)
             // 初始化语言偏好失败时静默处理，继续使用默认语言
         }
-        
+
         setContent {
             SmartInventoryManagerTheme {
                 Surface(
@@ -148,8 +148,8 @@ class MainActivity : ComponentActivity() {
                             null
                         }
                     }
-                    
-                    LanguageContextProvider(initialLanguage = savedLanguage) { 
+
+                    LanguageContextProvider(initialLanguage = savedLanguage) {
                         SmartInventoryManagerApp()
                     }
                 }
@@ -158,12 +158,39 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+/** 类型安全的导航目标（Navigation 3）。 */
+@Serializable
+sealed interface Routes : NavKey {
+    @Serializable
+    data object Inventory : Routes
+
+    @Serializable
+    data object Add : Routes
+
+    @Serializable
+    data object PurchaseList : Routes
+
+    @Serializable
+    data object Menu : Routes
+
+    @Serializable
+    data class Edit(val itemId: String) : Routes
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmartInventoryManagerApp() {
-    val navController = rememberNavController()
-    var selectedIndex by rememberSaveable { mutableIntStateOf(0) }
-    
+    val backStack = rememberNavBackStack(Routes.Inventory)
+
+    val selectedIndex = when (val key = backStack.lastOrNull()) {
+        is Routes.Inventory, is Routes.Edit -> 0
+        is Routes.Add -> 1
+        is Routes.PurchaseList -> 2
+        is Routes.Menu -> 3
+        null -> 0
+        else -> 0
+    }
+
     // 移除Scaffold，直接使用Box作为根组件，避免任何默认的padding或占位
     Column(modifier = Modifier.fillMaxSize()) {
         // 顶部应用栏
@@ -179,49 +206,52 @@ fun SmartInventoryManagerApp() {
                 Text(title)
             }
         )
-        
+
         // 主内容区域
         // 使用Box来容纳内容和悬浮的导航栏
         Box(modifier = Modifier.fillMaxSize()) {
-            // 主内容区域：允许内容完全填充整个屏幕，包括导航栏所在区域
-            NavHost(
-                navController = navController,
-                startDestination = "inventory",
-                modifier = Modifier.fillMaxSize() // 让内容可以填充整个屏幕，包括导航栏区域
-            ) {
-                composable("inventory") {
-                    InventoryScreen(
-                        onEditItem = { item ->
-                            // 将编辑的item通过参数传递给AddItemScreen
-                            navController.navigate("add/${item.id}")
-                        }
-                    )
-                }
-                composable("add") {
-                    AddItemScreen(
-                        onBackPress = {
-                            navController.navigateUp()
-                        }
-                    )
-                }
-                // 添加一个新的路由，用于编辑现有物品
-                composable("add/{itemId}") { backStackEntry ->
-                    val itemId = backStackEntry.arguments?.getString("itemId")
-                    AddItemScreen(
-                        itemId = itemId,
-                        onBackPress = {
-                            navController.navigateUp()
-                        }
-                    )
-                }
-                composable("purchaselist") {
-                    PurchaseListScreen()
-                }
-                composable("menu") {
-                    MenuScreen(navController)
+            // 主内容区域：由 Navigation 3 根据返回栈渲染当前页面
+            NavDisplay(
+                backStack = backStack,
+                onBack = { backStack.removeLastOrNull() },
+                modifier = Modifier.fillMaxSize()
+            ) { key ->
+                when (key) {
+                    Routes.Inventory -> NavEntry(Routes.Inventory) {
+                        InventoryScreen(
+                            onEditItem = { item -> backStack.add(Routes.Edit(item.id)) }
+                        )
+                    }
+
+                    Routes.Add -> NavEntry(Routes.Add) {
+                        AddItemScreen(
+                            onBackPress = { backStack.removeLastOrNull() }
+                        )
+                    }
+
+                    is Routes.Edit -> NavEntry(key) {
+                        AddItemScreen(
+                            itemId = key.itemId,
+                            onBackPress = { backStack.removeLastOrNull() }
+                        )
+                    }
+
+                    Routes.PurchaseList -> NavEntry(Routes.PurchaseList) {
+                        PurchaseListScreen()
+                    }
+
+                    Routes.Menu -> NavEntry(Routes.Menu) {
+                        MenuScreen(onBackPress = { backStack.removeLastOrNull() })
+                    }
+
+                    else -> NavEntry(Routes.Inventory) {
+                        InventoryScreen(
+                            onEditItem = { item -> backStack.add(Routes.Edit(item.id)) }
+                        )
+                    }
                 }
             }
-            
+
             // 悬浮导航栏：放置在内容上方，实现完全悬浮效果
             Box(
                 modifier = Modifier
@@ -232,21 +262,16 @@ fun SmartInventoryManagerApp() {
                 LiquidBottomNavigation(
                     selectedIndex = selectedIndex,
                     onTabSelected = { index ->
-                        selectedIndex = index
-                        val route = when (index) {
-                            0 -> "inventory"
-                            1 -> "add"
-                            2 -> "purchaselist"
-                            3 -> "menu"
-                            else -> "inventory"
+                        val target = when (index) {
+                            0 -> Routes.Inventory
+                            1 -> Routes.Add
+                            2 -> Routes.PurchaseList
+                            3 -> Routes.Menu
+                            else -> Routes.Inventory
                         }
-                        navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        // 切换标签时重置返回栈到该标签根页面（单栈模式，保持简单）
+                        backStack.clear()
+                        backStack.add(target)
                     }
                 )
             }
@@ -266,7 +291,7 @@ fun LiquidBottomNavigation(
         BottomNavItem(stringResource(id = R.string.nav_purchaselist), Icons.Default.ShoppingCart),
         BottomNavItem(stringResource(id = R.string.nav_menu), Icons.Default.Menu)
     )
-    
+
     LiquidBottomTabs(
         // 不要在 bottomBar 中使用 fillMaxSize()，会撑满 Scaffold 可用高度并遮盖主内容
         modifier = modifier
@@ -304,11 +329,9 @@ fun PurchaseListScreen() {
 
 // 菜单页面
 @Composable
-fun MenuScreen(navController: androidx.navigation.NavController) {
+fun MenuScreen(onBackPress: () -> Unit = {}) {
     SettingsScreen(
-        onNavigateBack = {
-            navController.navigateUp()
-        }
+        onNavigateBack = onBackPress
     )
 }
 

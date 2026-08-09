@@ -4,12 +4,13 @@ import com.chronie.inventorymanager.data.repository.InventoryRepository
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * 生成采购清单用例
  */
-class GeneratePurchaseListUseCase(
-    private val inventoryRepository: InventoryRepository = InventoryRepository()
+class GeneratePurchaseListUseCase @Inject constructor(
+    private val inventoryRepository: InventoryRepository
 ) {
     /**
      * 执行生成采购清单
@@ -36,8 +37,8 @@ class GeneratePurchaseListUseCase(
  * 获取采购清单用例
  * 这里使用简化的实现，实际通过API获取
  */
-class GetPurchaseListUseCase(
-    private val inventoryRepository: InventoryRepository = InventoryRepository()
+class GetPurchaseListUseCase @Inject constructor(
+    private val inventoryRepository: InventoryRepository
 ) {
     suspend fun execute(): Result<List<InventoryItem>> = withContext(Dispatchers.IO) {
         try {
@@ -57,8 +58,8 @@ class GetPurchaseListUseCase(
  * 保存采购清单用例
  * 这里使用占位实现
  */
-class SavePurchaseListUseCase(
-    private val inventoryRepository: InventoryRepository = InventoryRepository()
+class SavePurchaseListUseCase @Inject constructor(
+    private val inventoryRepository: InventoryRepository
 ) {
     suspend fun execute(items: List<InventoryItem>): Result<Unit> = withContext(Dispatchers.IO) {
         try {
@@ -75,8 +76,8 @@ class SavePurchaseListUseCase(
  * 更新采购清单项目用例
  * 这里使用占位实现
  */
-class UpdatePurchaseListItemUseCase(
-    private val inventoryRepository: InventoryRepository = InventoryRepository()
+class UpdatePurchaseListItemUseCase @Inject constructor(
+    private val inventoryRepository: InventoryRepository
 ) {
     suspend fun execute(
         itemId: String,
@@ -100,8 +101,8 @@ class UpdatePurchaseListItemUseCase(
  * 获取所有采购清单用例
  * 这里使用占位实现
  */
-class GetAllPurchaseListsUseCase(
-    private val inventoryRepository: InventoryRepository = InventoryRepository()
+class GetAllPurchaseListsUseCase @Inject constructor(
+    private val inventoryRepository: InventoryRepository
 ) {
     suspend fun execute(): Result<List<List<InventoryItem>>> = withContext(Dispatchers.IO) {
         try {

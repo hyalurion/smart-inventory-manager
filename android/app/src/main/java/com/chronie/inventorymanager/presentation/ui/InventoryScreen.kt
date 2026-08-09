@@ -31,7 +31,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.animation.core.*
 import kotlinx.coroutines.delay
 import com.chronie.inventorymanager.R
@@ -50,7 +50,7 @@ import com.chronie.inventorymanager.ui.theme.getGlassColors
 /** 库存主页面 显示库存物品列表，支持搜索、筛选、统计显示和操作功能 */
 @Composable
 fun InventoryScreen(
-        viewModel: InventoryViewModel = viewModel(),
+        viewModel: InventoryViewModel = hiltViewModel(),
         onAddItem: () -> Unit = {},
         onEditItem: (InventoryItem) -> Unit = {},
         onViewItem: (InventoryItem) -> Unit = {}

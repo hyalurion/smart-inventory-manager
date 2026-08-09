@@ -55,12 +55,9 @@ interface InventoryApiService {
     @GET("/api/inventory/items/generate-purchase-list")
     suspend fun getPurchaseList(): Response<PurchaseListResponse>
     
-    // 批量操作
-    @POST("/api/items/batch/use")
-    suspend fun batchUseItems(@Body itemIds: List<String>): Response<BatchUseResponse>
-    
-    @DELETE("/api/items/batch/delete")
-    suspend fun batchDeleteItems(@Body itemIds: List<String>): Response<BatchDeleteResponse>
+    // 批量操作（对齐 Go 后端 POST /api/inventory/items/batch）
+    @POST("/api/inventory/items/batch")
+    suspend fun batch(@Body request: BatchRequest): Response<BatchResponse>
 }
 
 /**
@@ -69,39 +66,67 @@ interface InventoryApiService {
 data class InventoryItemsResponse(
     val success: Boolean,
     val data: List<InventoryItem>,
-    val pagination: PaginationInfo
+    val pagination: PaginationInfo,
+    val message: String? = null,
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
 data class SingleItemResponse(
     val success: Boolean,
     val data: InventoryItem,
-    val message: String? = null
+    val message: String? = null,
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
 data class DeleteResponse(
     val success: Boolean,
-    val message: String
+    val message: String,
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
 data class StatisticsResponse(
     val success: Boolean,
-    val data: StockStatistics
+    val data: StockStatistics,
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
 data class CategoriesResponse(
     val success: Boolean,
-    val data: List<String>
+    val data: List<String>,
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
-data class BatchUseResponse(
-    val success: Boolean,
-    val data: List<InventoryItem>,
-    val message: String
+/**
+ * 批量操作请求（对齐 Go 后端 batchInput：operation + int 类型 itemIds + newCategory）
+ */
+data class BatchRequest(
+    val operation: String, // "delete" | "update_category"
+    val itemIds: List<Int>,
+    val newCategory: String = ""
 )
 
-data class BatchDeleteResponse(
+data class BatchResponse(
     val success: Boolean,
-    val message: String
+    val message: String = "",
+    val error_code: String? = null,
+    val error_data: Map<String, Any?>? = null,
+    val message_code: String? = null,
+    val message_data: Map<String, Any?>? = null
 )
 
 data class PaginationInfo(

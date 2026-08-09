@@ -43,3 +43,4 @@ node_modules/
 *.temp
 
 gradle-*-all.zip
+release/*

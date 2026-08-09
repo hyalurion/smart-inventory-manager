@@ -8,6 +8,11 @@ import com.chronie.inventorymanager.domain.model.StockStatistics
 import com.smartinventory.models.PurchaseListResponse
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.google.gson.TypeAdapter
+import com.google.gson.stream.JsonToken
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -218,6 +223,42 @@ class InventoryRepository @Inject constructor(
     )
 }
 
+/**
+ * 多格式日期适配器：兼容后端返回的各种日期字符串。
+ * 任一格式解析成功即返回；全部失败（或为空/null）时返回 null，避免单条记录格式异常导致整个列表反序列化失败。
+ */
+private class MultiFormatDateAdapter : TypeAdapter<Date?>() {
+    private val formats =
+        listOf(
+            SimpleDateFormat("yyyy-MM-dd", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS", Locale.US),
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+        )
+
+    override fun write(out: JsonWriter, value: Date?) {
+        if (value == null) out.nullValue() else out.value(formats[0].format(value))
+    }
+
+    override fun read(`in`: JsonReader): Date? {
+        if (`in`.peek() == JsonToken.NULL) {
+            `in`.nextNull()
+            return null
+        }
+        val raw = `in`.nextString() ?: return null
+        if (raw.isEmpty()) return null
+        for (format in formats) {
+            try {
+                return format.parse(raw)
+            } catch (_: Exception) {
+                // 尝试下一种格式
+            }
+        }
+        return null
+    }
+}
+
 /** 公共 API 工厂类 */
 object ApiFactory {
     private const val BASE_URL = "http://192.168.10.9:5000/"
@@ -231,9 +272,11 @@ object ApiFactory {
             .addInterceptor(logging)
             .build()
 
-        // 自定义Gson解析器，支持ISO 8601日期格式
+        // 自定义Gson解析器，支持后端多种日期格式
+        // 后端序列化：expiryDate -> "YYYY-MM-DD"；createdAt/updatedAt/lastUsedAt -> "YYYY-MM-DDTHH:MM:SS"
+        // （可能带 .SSS / .SSSSSS 毫秒，也可能空格分隔），需多格式容错，否则单一严格格式会令整个响应反序列化失败
         val gson = GsonBuilder()
-            .setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS")
+            .registerTypeAdapter(Date::class.java, MultiFormatDateAdapter())
             .create()
 
         val retrofit = retrofit2.Retrofit.Builder()

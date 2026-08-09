@@ -21,6 +21,7 @@ import java.util.Date
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** 库存页面ViewModel 管理库存页面的UI状态和业务逻辑 */
@@ -49,7 +50,8 @@ class InventoryViewModel @Inject constructor(
     /** 加载库存数据 */
     fun loadInventory() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            // 使用原子 update，避免与 loadStatistics 并发写同一 StateFlow 时互相覆盖
+            _uiState.update { it.copy(isLoading = true, error = null) }
 
             try {
                 val items = getInventoryItemsUseCase.execute()
@@ -57,11 +59,7 @@ class InventoryViewModel @Inject constructor(
                 // 空列表是正常状态（服务器正常但暂无数据），不应误判为连接失败。
                 // 真正的连接异常会在下方 catch 中按类型（UnknownHost/Connect/Timeout/ApiException）给出具体提示。
                 val categories = items.mapNotNull { it.category }.distinct().sorted()
-                _uiState.value = _uiState.value.copy(
-                    items = items,
-                    availableCategories = categories,
-                    isLoading = false
-                )
+                _uiState.update { it.copy(items = items, availableCategories = categories, isLoading = false) }
                 // 重新应用筛选器
                 applyFilters()
             } catch (e: Exception) {
@@ -72,29 +70,29 @@ class InventoryViewModel @Inject constructor(
                     is java.net.ConnectException -> "服务器连接失败: 请确认服务器 ${getBaseUrl()} 正在运行"
                     else -> "加载数据失败: ${e.message}"
                 }
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    error = errorMessage
-                )
+                _uiState.update { it.copy(isLoading = false, error = errorMessage) }
             }
         }
     }
-    
+
     /** 获取服务器地址 */
     private fun getBaseUrl(): String = "http://192.168.10.9:5000"
 
     /** 加载统计数据 */
     fun loadStatistics() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingStats = true)
+            _uiState.update { it.copy(isLoadingStats = true) }
 
             try {
                 val statistics = getStatisticsUseCase.execute()
-                _uiState.value =
-                        _uiState.value.copy(statistics = statistics, isLoadingStats = false)
+                _uiState.update { it.copy(statistics = statistics, isLoadingStats = false) }
             } catch (e: Exception) {
-                _uiState.value =
-                        _uiState.value.copy(isLoadingStats = false, error = (e as? ApiException)?.message ?: "加载统计失败: ${e.message}")
+                _uiState.update {
+                    it.copy(
+                        isLoadingStats = false,
+                        error = (e as? ApiException)?.message ?: "加载统计失败: ${e.message}"
+                    )
+                }
             }
         }
     }
@@ -107,47 +105,50 @@ class InventoryViewModel @Inject constructor(
 
     /** 更新搜索查询 */
     fun updateSearchQuery(query: String) {
-        _uiState.value = _uiState.value.copy(searchQuery = query)
+        _uiState.update { it.copy(searchQuery = query) }
         applyFilters()
     }
 
     /** 更新分类筛选 */
     fun updateCategory(category: String?) {
-        _uiState.value = _uiState.value.copy(selectedCategory = category)
+        _uiState.update { it.copy(selectedCategory = category) }
         applyFilters()
     }
 
     /** 更新状态筛选 */
     fun updateStatusFilter(statusFilter: StatusFilter) {
-        _uiState.value = _uiState.value.copy(statusFilter = statusFilter)
+        _uiState.update { it.copy(statusFilter = statusFilter) }
         applyFilters()
     }
 
     /** 清除所有筛选 */
     fun clearFilters() {
-        _uiState.value =
-                _uiState.value.copy(
-                        searchQuery = "",
-                        selectedCategory = null,
-                        statusFilter = StatusFilter.ALL,
-                        sortOption = SortOption.NAME_ASC
-                )
+        _uiState.update {
+            it.copy(
+                searchQuery = "",
+                selectedCategory = null,
+                statusFilter = StatusFilter.ALL,
+                sortOption = SortOption.NAME_ASC
+            )
+        }
         applyFilters()
     }
 
     /** 更新排序选项 */
     fun updateSortOption(sortOption: SortOption) {
-        _uiState.value = _uiState.value.copy(sortOption = sortOption)
+        _uiState.update { it.copy(sortOption = sortOption) }
         applyFilters()
     }
 
     /** 处理统一筛选变更 */
     fun onUnifiedFilterChanged(filter: UnifiedFilter) {
-        _uiState.value = _uiState.value.copy(
-            selectedCategory = filter.selectedCategories.firstOrNull(), // 统一筛选支持多分类，但UI中只取第一个
-            statusFilter = filter.statusFilter,
-            sortOption = filter.sortOption
-        )
+        _uiState.update {
+            it.copy(
+                selectedCategory = filter.selectedCategories.firstOrNull(), // 统一筛选支持多分类，但UI中只取第一个
+                statusFilter = filter.statusFilter,
+                sortOption = filter.sortOption
+            )
+        }
         applyFilters()
     }
 
@@ -156,18 +157,16 @@ class InventoryViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 println("InventoryViewModel: 开始使用物品 - ID: ${item.id}, 名称: ${item.name}")
-                
+
                 // 调用 useInventoryItemUseCase，该方法会调用 API 端点 /api/inventory/items/{id}/use
                 val updatedItem = useInventoryItemUseCase.execute(item.id)
-                
+
                 println("InventoryViewModel: 物品使用成功 - 更新后数量: ${updatedItem.quantity}")
 
                 // 更新本地状态
-                val updatedItems =
-                        _uiState.value.items.map {
-                            if (it.id == updatedItem.id) updatedItem else it
-                        }
-                _uiState.value = _uiState.value.copy(items = updatedItems)
+                _uiState.update { state ->
+                    state.copy(items = state.items.map { if (it.id == updatedItem.id) updatedItem else it })
+                }
 
                 // 重新应用筛选器
                 applyFilters()
@@ -177,7 +176,7 @@ class InventoryViewModel @Inject constructor(
             } catch (e: Exception) {
                 println("InventoryViewModel: 使用物品失败 - ${e.message}")
                 e.printStackTrace()
-                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "使用物品失败: ${e.message}")
+                _uiState.update { it.copy(error = (e as? ApiException)?.message ?: "使用物品失败: ${e.message}") }
             }
         }
     }
@@ -189,8 +188,9 @@ class InventoryViewModel @Inject constructor(
                 deleteInventoryItemUseCase.execute(item.id)
 
                 // 从本地状态中移除
-                val updatedItems = _uiState.value.items.filter { it.id != item.id }
-                _uiState.value = _uiState.value.copy(items = updatedItems)
+                _uiState.update { state ->
+                    state.copy(items = state.items.filter { it.id != item.id })
+                }
 
                 // 重新应用筛选器
                 applyFilters()
@@ -198,7 +198,7 @@ class InventoryViewModel @Inject constructor(
                 // 重新加载统计数据
                 loadStatistics()
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "删除物品失败: ${e.message}")
+                _uiState.update { it.copy(error = (e as? ApiException)?.message ?: "删除物品失败: ${e.message}") }
             }
         }
     }
@@ -211,8 +211,9 @@ class InventoryViewModel @Inject constructor(
                 val created = addInventoryItemUseCase.execute(item)
 
                 // 将新物品加入本地状态
-                val updatedItems = _uiState.value.items + created
-                _uiState.value = _uiState.value.copy(items = updatedItems)
+                _uiState.update { state ->
+                    state.copy(items = state.items + created)
+                }
 
                 // 重新应用筛选器和刷新统计
                 applyFilters()
@@ -220,7 +221,7 @@ class InventoryViewModel @Inject constructor(
 
                 onResult(true, null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "添加物品失败: ${e.message}")
+                _uiState.update { it.copy(error = (e as? ApiException)?.message ?: "添加物品失败: ${e.message}") }
                 onResult(false, e.message)
             } finally {
                 _isLoading.value = false
@@ -235,17 +236,16 @@ class InventoryViewModel @Inject constructor(
             try {
                 val updated = updateInventoryItemUseCase.execute(item)
 
-                val updatedItems = _uiState.value.items.map {
-                    if (it.id == updated.id) updated else it
+                _uiState.update { state ->
+                    state.copy(items = state.items.map { if (it.id == updated.id) updated else it })
                 }
-                _uiState.value = _uiState.value.copy(items = updatedItems)
 
                 applyFilters()
                 loadStatistics()
 
                 onResult(true, null)
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = (e as? ApiException)?.message ?: "更新物品失败: ${e.message}")
+                _uiState.update { it.copy(error = (e as? ApiException)?.message ?: "更新物品失败: ${e.message}") }
                 onResult(false, e.message)
             } finally {
                 _isLoading.value = false
@@ -261,88 +261,89 @@ class InventoryViewModel @Inject constructor(
 
     /** 清除错误 */
     fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
+        _uiState.update { it.copy(error = null) }
     }
 
     /** 应用筛选器 */
     private fun applyFilters() {
-        val currentState = _uiState.value
-        val searchQuery = currentState.searchQuery
-        val selectedCategory = currentState.selectedCategory
-        val statusFilter = currentState.statusFilter
-        val sortOption = currentState.sortOption
+        _uiState.update { currentState ->
+            val searchQuery = currentState.searchQuery
+            val selectedCategory = currentState.selectedCategory
+            val statusFilter = currentState.statusFilter
+            val sortOption = currentState.sortOption
 
-        val filteredItems =
+            val filteredItems =
                 currentState.items.filter { item ->
                     // 搜索过滤
                     val matchesSearch =
-                            if (searchQuery.isEmpty()) {
-                                true
-                            } else {
-                                item.name.contains(searchQuery, ignoreCase = true) ||
-                                        item.description.contains(
-                                                searchQuery,
-                                                ignoreCase = true
-                                        )
-                            }
+                        if (searchQuery.isEmpty()) {
+                            true
+                        } else {
+                            item.name.orEmpty().contains(searchQuery, ignoreCase = true) ||
+                                    item.description.orEmpty().contains(
+                                        searchQuery,
+                                        ignoreCase = true
+                                    )
+                        }
 
                     // 分类过滤
                     val matchesCategory =
-                            if (selectedCategory == null) {
-                                true
-                            } else {
-                                item.category == selectedCategory
-                            }
+                        if (selectedCategory == null) {
+                            true
+                        } else {
+                            item.category == selectedCategory
+                        }
 
                     // 状态过滤
                     val matchesStatus =
-                            when (statusFilter) {
-                                StatusFilter.ALL -> true
-                                StatusFilter.NORMAL ->
-                                        item.getStockStatus() ==
-                                                com.chronie.inventorymanager.domain.model
-                                                        .StockStatus.NORMAL
-                                StatusFilter.LOW_STOCK ->
-                                        item.getStockStatus() ==
-                                                com.chronie.inventorymanager.domain.model
-                                                        .StockStatus.LOW_STOCK
-                                StatusFilter.EXPIRING_SOON ->
-                                        item.getStockStatus() ==
-                                                com.chronie.inventorymanager.domain.model
-                                                        .StockStatus.EXPIRING_SOON
-                                StatusFilter.EXPIRED ->
-                                        item.getStockStatus() ==
-                                                com.chronie.inventorymanager.domain.model
-                                                        .StockStatus.EXPIRED
-                            }
+                        when (statusFilter) {
+                            StatusFilter.ALL -> true
+                            StatusFilter.NORMAL ->
+                                item.getStockStatus() ==
+                                        com.chronie.inventorymanager.domain.model
+                                            .StockStatus.NORMAL
+                            StatusFilter.LOW_STOCK ->
+                                item.getStockStatus() ==
+                                        com.chronie.inventorymanager.domain.model
+                                            .StockStatus.LOW_STOCK
+                            StatusFilter.EXPIRING_SOON ->
+                                item.getStockStatus() ==
+                                        com.chronie.inventorymanager.domain.model
+                                            .StockStatus.EXPIRING_SOON
+                            StatusFilter.EXPIRED ->
+                                item.getStockStatus() ==
+                                        com.chronie.inventorymanager.domain.model
+                                            .StockStatus.EXPIRED
+                        }
 
                     matchesSearch && matchesCategory && matchesStatus
                 }
 
-        // 应用排序
-        val sortedItems = filteredItems.sortedWith(compareBy<InventoryItem> { item ->
-            when (sortOption) {
-                SortOption.NAME_ASC -> item.name.lowercase()
-                SortOption.NAME_DESC -> item.name.lowercase()
-                SortOption.QUANTITY_ASC -> item.quantity.toString().padStart(10, '0')
-                SortOption.QUANTITY_DESC -> item.quantity.toString().padStart(10, '0')
-                SortOption.DATE_ADDED_ASC -> item.createdAt.toString()
-                SortOption.DATE_ADDED_DESC -> item.createdAt.toString()
-                SortOption.EXPIRY_DATE_ASC -> item.expiryDate?.toString() ?: ""
-                SortOption.EXPIRY_DATE_DESC -> item.expiryDate?.toString() ?: ""
-                SortOption.UPDATED_AT_ASC -> item.updatedAt.toString()
-                SortOption.UPDATED_AT_DESC -> item.updatedAt.toString()
-            }
-        }.let { comparator ->
-            when (sortOption) {
-                SortOption.NAME_ASC, SortOption.QUANTITY_ASC, SortOption.DATE_ADDED_ASC, 
-                     SortOption.EXPIRY_DATE_ASC, SortOption.UPDATED_AT_ASC -> comparator
-                SortOption.NAME_DESC, SortOption.QUANTITY_DESC, SortOption.DATE_ADDED_DESC,
-                SortOption.EXPIRY_DATE_DESC, SortOption.UPDATED_AT_DESC -> comparator.reversed()
-            }
-        })
+            // 应用排序
+            val sortedItems = filteredItems.sortedWith(compareBy<InventoryItem> { item ->
+                when (sortOption) {
+                    SortOption.NAME_ASC -> item.name.lowercase()
+                    SortOption.NAME_DESC -> item.name.lowercase()
+                    SortOption.QUANTITY_ASC -> item.quantity.toString().padStart(10, '0')
+                    SortOption.QUANTITY_DESC -> item.quantity.toString().padStart(10, '0')
+                    SortOption.DATE_ADDED_ASC -> item.createdAt.toString()
+                    SortOption.DATE_ADDED_DESC -> item.createdAt.toString()
+                    SortOption.EXPIRY_DATE_ASC -> item.expiryDate?.toString() ?: ""
+                    SortOption.EXPIRY_DATE_DESC -> item.expiryDate?.toString() ?: ""
+                    SortOption.UPDATED_AT_ASC -> item.updatedAt.toString()
+                    SortOption.UPDATED_AT_DESC -> item.updatedAt.toString()
+                }
+            }.let { comparator ->
+                when (sortOption) {
+                    SortOption.NAME_ASC, SortOption.QUANTITY_ASC, SortOption.DATE_ADDED_ASC,
+                    SortOption.EXPIRY_DATE_ASC, SortOption.UPDATED_AT_ASC -> comparator
+                    SortOption.NAME_DESC, SortOption.QUANTITY_DESC, SortOption.DATE_ADDED_DESC,
+                    SortOption.EXPIRY_DATE_DESC, SortOption.UPDATED_AT_DESC -> comparator.reversed()
+                }
+            })
 
-        _uiState.value = _uiState.value.copy(filteredItems = sortedItems)
+            currentState.copy(filteredItems = sortedItems)
+        }
     }
 }
 

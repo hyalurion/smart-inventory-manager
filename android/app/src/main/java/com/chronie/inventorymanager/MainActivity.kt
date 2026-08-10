@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.res.stringResource
 import androidx.compose.material.icons.Icons
@@ -57,6 +58,10 @@ import kotlinx.serialization.Serializable
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // 启用 edge-to-edge：状态栏/导航栏透明，App 内容可绘制到其下方，
+        // 配合 Theme 里 isAppearanceLightStatusBars 实现状态栏图标随深浅主题正确反色。
+        enableEdgeToEdge()
 
         android.util.Log.d("MainActivity", "Starting language initialization")
 
@@ -257,6 +262,7 @@ fun SmartInventoryManagerApp() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.BottomCenter)
+                    .navigationBarsPadding() // edge-to-edge 后避开系统导航条，避免被手势条遮挡
                     .padding(bottom = 20.dp) // 离屏幕底部的距离
             ) {
                 LiquidBottomNavigation(

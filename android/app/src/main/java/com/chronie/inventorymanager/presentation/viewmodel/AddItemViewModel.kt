@@ -2,9 +2,12 @@ package com.chronie.inventorymanager.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import com.chronie.inventorymanager.domain.usecase.AddInventoryItemUseCase
 import com.chronie.inventorymanager.domain.usecase.GetInventoryItemsUseCase
+import com.chronie.inventorymanager.data.network.ApiException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,9 +22,10 @@ data class AddItemUiState(
 )
 
 /** 添加物品页面ViewModel */
-class AddItemViewModel(
-    private val addInventoryItemUseCase: AddInventoryItemUseCase = AddInventoryItemUseCase(),
-    private val getInventoryItemsUseCase: GetInventoryItemsUseCase = GetInventoryItemsUseCase()
+@HiltViewModel
+class AddItemViewModel @Inject constructor(
+    private val addInventoryItemUseCase: AddInventoryItemUseCase,
+    private val getInventoryItemsUseCase: GetInventoryItemsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddItemUiState())
@@ -63,6 +67,7 @@ class AddItemViewModel(
                 )
             } catch (e: Exception) {
                 val errorMessage = when (e) {
+                    is ApiException -> e.message ?: "操作失败"
                     is java.net.UnknownHostException -> "网络连接失败: 无法访问服务器"
                     is java.net.SocketTimeoutException -> "网络请求超时: 请检查网络连接"
                     is java.net.ConnectException -> "服务器连接失败: 请确认服务器正在运行"

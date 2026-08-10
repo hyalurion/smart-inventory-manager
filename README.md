@@ -13,34 +13,14 @@ A modern web application for home inventory management, supporting multiple lang
 ### Intelligent Features
 - **Intelligent Reminders**:
   - Reminders for expired items.
-  - Warnings for items about to expire (within 3 days).
+  - Warnings for items about to expire (within 7 days).
   - Reminders for low inventory.
 - **Intelligent Recommendations**:
   - Purchase suggestions based on inventory status.
   - Recommendations based on usage frequency analysis.
 
 ### Multi-language Support (21 languages)
-- Arabic (ar)
-- Bengali (bn)
-- German (de)
-- English (en)
-- Spanish (es)
-- French (fr)
-- Hindi (hi)
-- Indonesian (id)
-- Italian (it)
-- Japanese (ja)
-- Korean (ko)
-- Persian (fa)
-- Portuguese (pt)
-- Russian (ru)
-- Tamil (ta)
-- Thai (th)
-- Turkish (tr)
-- Urdu (ur)
-- Vietnamese (vi)
-- Chinese (Simplified) (zh-CN)
-- Chinese (Traditional) (zh-TW)
+Arabic, Bengali, German, English, Spanish, French, Hindi, Indonesian, Italian, Japanese, Korean, Persian, Portuguese, Russian, Tamil, Thai, Turkish, Urdu, Vietnamese, Chinese (Simplified) and Chinese (Traditional).
 
 ### Technical Features
 - **Responsive Design**: Support for desktop and mobile devices.
@@ -57,80 +37,99 @@ A modern web application for home inventory management, supporting multiple lang
 - **Font Awesome**: Icon library.
 - **Native JavaScript**: Core logic implementation.
 
-### Backend
-- **Python Flask**: Lightweight web framework.
-- **SQLAlchemy**: ORM database operations.
-- **Flask-CORS**: Cross-origin request support.
-- **SQLite**: Lightweight database.
+### Backend (Go)
+- **Go 1.26.5** (requires Go 1.22+; uses the standard library `net/http` router).
+- **modernc.org/sqlite**: Pure-Go SQLite driver (no CGO / no C compiler required).
+- **SQLite**: Lightweight database (reuses the same `src/database/app.db` file).
+- **Zero third-party web framework**: routing, middleware and static serving are all standard library.
+
+> The backend was migrated from Python/Flask to Go. The Python implementation has been removed; the Go service is the only backend.
 
 ## 📁 Project Structure
 
 ```
 smart-inventory-manager/
 ├── .gitignore
-├── README.md               # Project description
-├── todo.md                # Development task list
-├── backend/                 # Backend source code
-│       ├── requirements.txt # Python dependencies
-│       ├── venv/           # Python virtual environment
-│       └── src/
-│           ├── main.py     # Flask application entry point
-│           ├── models/     # Data models
-│           │   ├── user.py
-│           │   └── inventory.py
-│           ├── routes/     # API routes
-│           │   ├── user.py
-│           │   └── inventory.py
-│           └── static/     # Frontend source code and static files
-│               ├── index.html           # Main page
-│               ├── app.js              # Vue.js application logic
-│               └── locales/            # Language files
-└── start.bat                # Startup script for Windows
+├── README.md
+├── start.bat                # Builds and launches the Go backend (Windows)
+├── backend/                 # Backend source code (Go)
+│   ├── go.mod              # Go module definition (requires go 1.26.5)
+│   ├── go.sum
+│   ├── main.go             # Server entry point (routing, middleware, SPA serving)
+│   ├── bin/                # Compiled binary (git-ignored)
+│   ├── internal/
+│   │   ├── model/          # Domain types + custom Date/DateTime/NullString
+│   │   ├── store/          # SQLite persistence layer
+│   │   ├── handlers/       # HTTP handlers (inventory, AI, health)
+│   │   └── middleware/     # CORS middleware
+│   └── src/
+│       ├── static/         # Frontend build (served by the Go server)
+│       │   ├── index.html
+│       │   ├── app.js
+│       │   └── locales/    # Language files
+│       └── database/       # SQLite database (app.db)
+└── android/                # Android client (if present)
 ```
 
 ## 🔧 Local Development
 
 ### Environment Requirements
-- Python 3.11+
+- **Go 1.26.5** (or any Go 1.22+ toolchain)
 - Modern browser (supporting ES6+)
 
-### Installation Steps
+### Installation & Run (Windows)
 
-1. **Clone the project**
-```bash
-git clone https://github.com/chronie-shizutoki/smart-inventory-manager.git
-cd smart-inventory-manager
-```
+1. **Install Go**
+   Download and install Go 1.26.5 from https://go.dev/dl/ and ensure `go` is on your PATH:
+   ```bash
+   go version   # should print go1.26.5 (or newer)
+   ```
 
-2. **Set up the backend environment**
-```bash
-cd backend
-# Create a virtual environment
-python -m venv venv
-# Activate the virtual environment
-source venv/bin/activate  # Linux/Mac
-# or venv\Scripts\activate  # Windows
-pip install -r requirements.txt
-```
+2. **Fetch dependencies**
+   ```bash
+   cd backend
+   go mod download   # populates the module cache
+   go mod verify     # confirms checksums
+   ```
+   If `proxy.golang.org` is unreachable from your network (common in mainland China),
+   point Go at a reachable mirror once — the setting is stored globally per user:
+   ```bash
+   go env -w GOPROXY=https://goproxy.cn,direct
+   go env -w GOSUMDB=sum.golang.google.cn
+   ```
+   Keeping `GOSUMDB` on the mirror preserves checksum verification; do not use `GOSUMDB=off`.
 
-3. **Start the backend service**
-```bash
-python src/main.py
-```
+3. **Build and start with one click**
+   ```bat
+   start.bat
+   ```
+   This builds the server into `backend/bin/server.exe` and starts it.
+
+   Alternatively, run it manually from the `backend` directory:
+   ```bash
+   cd backend
+   go run .
+   # or build first, then run:
+   go build -o bin/server.exe .
+   bin/server.exe
+   ```
 
 4. **Access the Application**
-- Local Access: Open your browser and visit http://localhost:5000
-- LAN Access: On other devices within the same network, use the IP address of the computer running the server, for example, http://192.168.1.100:5000
+   - Local: open http://localhost:5000
+   - LAN: use the computer's LAN IP, e.g. http://192.168.1.100:5000
 
-  > Tip: You can find your local IP address using the following methods:
-  > - Windows: Enter `ipconfig` in the Command Prompt to find the IPv4 address
-  > - Linux/Mac: Enter `ifconfig` or `ip addr` in the terminal to find the IPv4 address
+### Configuration (optional, via environment variables)
+
+| Variable           | Default                              | Description                                   |
+|--------------------|--------------------------------------|-----------------------------------------------|
+| `PORT`             | `5000`                               | HTTP listen port                              |
+| `DB_PATH`          | `src/database/app.db`                | Path to the SQLite database file              |
+| `STATIC_DIR`       | `src/static`                         | Directory that holds the SPA front-end        |
+| `EXPENSES_API_URL` | `http://192.168.10.9:3010/api/expenses` | Upstream URL for the `/expenses` proxy     |
 
 ## 📊 Database Design
 
-### Main Data Tables
-
-#### inventory_items (Inventory Items Table)
+### inventory_items
 - `id`: Primary key
 - `name`: Item name
 - `category`: Category
@@ -139,37 +138,37 @@ python src/main.py
 - `min_quantity`: Minimum stock
 - `expiry_date`: Expiration date
 - `description`: Description
+- `usage_count`: Times the item has been used
+- `last_used_at`: Last usage timestamp
 - `created_at`: Creation time
 - `updated_at`: Update time
 
+### categories
+- `id`: Primary key
+- `name`: Category name (unique)
+- `icon`: Icon
+- `created_at`: Creation time
+
 ## 🌐 API Interfaces
 
-### Inventory Management Interfaces
-- `GET /api/inventory/items` - Get the list of items
-- `GET /api/inventory/items/<int:item_id>` - Get details of a single item
-- `POST /api/inventory/items` - Create a new item
-- `PUT /api/inventory/items/{id}` - Update an item
-- `DELETE /api/inventory/items/{id}` - Delete an item
-- `GET /api/inventory/categories` - Get the list of categories
-- `POST /api/inventory/items/<int:item_id>/use` - Record item usage
-- `GET /api/inventory/items/generate-purchase-list` - Generate a purchase list
-- `POST /api/inventory/items/batch` - Batch operations (delete, update categories)
-- `GET /api/inventory/stats` - Get statistical data
-- `GET /api/inventory/alerts` - Get intelligent reminders
-- `GET /api/inventory/recommendations` - Get intelligent recommendations
+### Inventory Management (`/api/inventory`)
+- `GET    /items` — List items (supports `search`, `category`, `page`, `per_page`)
+- `GET    /items/{id}` — Get a single item
+- `POST   /items` — Create an item
+- `PUT    /items/{id}` — Update an item
+- `DELETE /items/{id}` — Delete an item
+- `GET    /stats` — Dashboard statistics
+- `GET    /categories` — List distinct categories
+- `POST   /items/{id}/use` — Record usage (decrements quantity)
+- `GET    /items/generate-purchase-list` — Low-stock purchase suggestions
+- `POST   /items/batch` — Batch delete / category update (`operation`: `delete` | `update_category`)
+- `GET    /expenses` — Proxy to the external expense-tracking API
 
-## 🎨 Interface Preview
+### AI (`/api/ai`)
+- `POST   /generate-records` — Upload one or more images (multipart `images` + form field `api_key`); the SiliconFlow vision model returns structured inventory records.
 
-### Main Pages
-1. **Inventory List Page**: Displays all items and supports search and filtering
-2. **Add Item Page**: Add new items to the inventory
-3. **Intelligent Analysis Page**: Displays intelligent reminders and recommendations
-
-### Main Features
-- Multi-language switching
-- Responsive layout
-- Real-time data update
-- Intelligent status prompts
+### Health
+- `GET    /api/health` — Service status, database health and memory usage.
 
 ## 👥 Contribution
 
@@ -178,5 +177,6 @@ Welcome to submit Issues and Pull Requests to improve this project!
 ## 🙏 Acknowledgments
 
 - Vue.js
-- Flask
+- Go
 - Tailwind CSS
+- Font Awesome

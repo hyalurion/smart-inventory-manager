@@ -1,24 +1,34 @@
 [versions]
-agp = "9.2.1"
-kotlin = "2.3.21"
-coreKtx = "1.18.0"
+agp = "9.3.1"
+kotlin = "2.4.10"
+coreKtx = "1.19.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
-lifecycleRuntimeKtx = "2.10.0"
+lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
-composeBom = "2026.05.01"
+composeBom = "2026.06.01"
 
 # 基础架构依赖版本
 room = "2.8.4"
 retrofit = "3.0.0"
-okhttp = "5.3.2"
+okhttp = "5.4.0"
 gson = "2.11.0"
-navigation = "2.9.8"
-lifecycle = "2.10.0"
-hilt = "2.59.2"
+nav3Core = "1.1.5"
+lifecycleViewmodelNav3 = "2.11.0"
+material3AdaptiveNav3 = "1.3.0-rc01"
+kotlinxSerializationCore = "1.9.0"
+kotlinSerialization = "2.2.21"
+ksp = "2.3.11"
+lifecycle = "2.11.0"
+hilt = "2.60.1"
 kotlinx_coroutines = "1.11.0"
 accompanist = "0.37.3"
+
+# 其他第三方库版本
+coil = "3.5.0"
+backdrop = "2.0.0"
+capsule = "2.1.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -36,6 +46,7 @@ androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-
 androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4", version.ref = "composeBom" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 androidx-compose-material3-adaptive-navigation-suite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite" }
+androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended" }
 androidx-compose-foundation = { group = "androidx.compose.foundation", name = "foundation", version.ref = "composeBom" }
 
 # Room数据库依赖
@@ -49,9 +60,12 @@ retrofit-gson = { group = "com.squareup.retrofit2", name = "converter-gson", ver
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 
-# 导航依赖
-androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
-androidx-navigation-testing = { group = "androidx.navigation", name = "navigation-testing", version.ref = "navigation" }
+# Navigation 3
+androidx-navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "nav3Core" }
+androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "nav3Core" }
+androidx-lifecycle-viewmodel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "lifecycleViewmodelNav3" }
+androidx-material3-adaptive-navigation3 = { group = "androidx.compose.material3.adaptive", name = "adaptive-navigation3", version.ref = "material3AdaptiveNav3" }
+kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "kotlinxSerializationCore" }
 
 # 生命周期依赖
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
@@ -60,7 +74,7 @@ androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lif
 # 依赖注入
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hilt" }
-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.3.0" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version = "1.4.0" }
 
 # 协程依赖
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx_coroutines" }
@@ -70,16 +84,22 @@ kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 accompanist-coil = { group = "com.google.accompanist", name = "accompanist-coil", version.ref = "accompanist" }
 accompanist-permissions = { group = "com.google.accompanist", name = "accompanist-permissions", version.ref = "accompanist" }
 
+# Coil 3 图片加载
+coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref = "coil" }
+coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
+
 # 临时数据存储（可选）
 androidx-datastore = { group = "androidx.datastore", name = "datastore-preferences", version = "1.2.1" }
 
-# AndroidLiquidGlass毛玻璃效果库
-androidliquidglass = { group = "com.github.chronie.inventorymanager.liquidglass0", name = "AndroidLiquidGlass", version = "1.0.0" }
+# AndroidLiquidGlass 毛玻璃效果库（kyant0）
+kyant-backdrop = { group = "io.github.kyant0", name = "backdrop", version.ref = "backdrop" }
+kyant-capsule = { group = "io.github.kyant0", name = "capsule", version.ref = "capsule" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
-hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+jetbrains-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlinSerialization" }
 

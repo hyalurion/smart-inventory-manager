@@ -4,12 +4,13 @@ import com.chronie.inventorymanager.data.repository.InventoryRepository
 import com.chronie.inventorymanager.domain.model.InventoryItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 /**
  * 使用库存物品用例（减少库存数量）
  */
-class UseInventoryItemUseCase(
-    private val repository: InventoryRepository = InventoryRepository()
+class UseInventoryItemUseCase @Inject constructor(
+    private val repository: InventoryRepository
 ) {
     suspend fun execute(itemId: String): InventoryItem = withContext(Dispatchers.IO) {
         println("UseInventoryItemUseCase: 调用 repository.useItem - itemId: $itemId")
